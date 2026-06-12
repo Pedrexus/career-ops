@@ -4,7 +4,7 @@
  * generate-pdf.mjs — HTML → PDF via Playwright
  *
  * Usage:
- *   node career-ops/generate-pdf.mjs <input.html> <output.pdf> [--format=letter|a4]
+ *   node career-ops/generate-pdf.mjs <input.html> <output.pdf> [--format=letter|a4] [--max-pages=1]
  *
  * Requires: @playwright/test (or playwright) installed.
  * Uses Chromium headless to render the HTML and produce a clean, ATS-parseable PDF.
@@ -79,10 +79,19 @@ async function generatePDF() {
 
   // Parse arguments
   let inputPath, outputPath, format = 'a4';
+  let maxPages = Number.parseInt(process.env.CV_MAX_PAGES || '1', 10);
+  let requestedScale = null;
+  let allowOverflow = false;
 
   for (const arg of args) {
     if (arg.startsWith('--format=')) {
       format = arg.split('=')[1].toLowerCase();
+    } else if (arg.startsWith('--max-pages=')) {
+      maxPages = Number.parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--scale=')) {
+      requestedScale = Number.parseFloat(arg.split('=')[1]);
+    } else if (arg === '--allow-overflow') {
+      allowOverflow = true;
     } else if (!inputPath) {
       inputPath = arg;
     } else if (!outputPath) {
@@ -91,7 +100,7 @@ async function generatePDF() {
   }
 
   if (!inputPath || !outputPath) {
-    console.error('Usage: node generate-pdf.mjs <input.html> <output.pdf> [--format=letter|a4]');
+    console.error('Usage: node generate-pdf.mjs <input.html> <output.pdf> [--format=letter|a4] [--max-pages=1] [--scale=1]');
     process.exit(1);
   }
 
@@ -104,10 +113,19 @@ async function generatePDF() {
     console.error(`Invalid format "${format}". Use: ${validFormats.join(', ')}`);
     process.exit(1);
   }
+  if (!Number.isInteger(maxPages) || maxPages < 1) {
+    console.error('Invalid --max-pages value. Use a positive integer.');
+    process.exit(1);
+  }
+  if (requestedScale != null && (!Number.isFinite(requestedScale) || requestedScale < 0.1 || requestedScale > 2)) {
+    console.error('Invalid --scale value. Use a number from 0.1 to 2.');
+    process.exit(1);
+  }
 
   console.log(`📄 Input:  ${inputPath}`);
   console.log(`📁 Output: ${outputPath}`);
   console.log(`📏 Format: ${format.toUpperCase()}`);
+  console.log(`📐 Max pages: ${allowOverflow ? 'unlimited' : maxPages}`);
 
   // Read HTML to inject font paths as absolute file:// URLs
   let html = await readFile(inputPath, 'utf-8');
@@ -146,35 +164,53 @@ async function generatePDF() {
     // Wait for fonts to load
     await page.evaluate(() => document.fonts.ready);
 
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: format,
-      printBackground: true,
-      margin: {
-        top: '0.6in',
-        right: '0.6in',
-        bottom: '0.6in',
-        left: '0.6in',
-      },
-      preferCSSPageSize: false,
-    });
+    const scaleCandidates = requestedScale == null
+      ? [1, 0.96, 0.92, 0.88, 0.84, 0.80, 0.76]
+      : [requestedScale];
+
+    let selected = null;
+    for (const scale of scaleCandidates) {
+      const pdfBuffer = await page.pdf({
+        format: format,
+        printBackground: true,
+        scale,
+        margin: {
+          top: '0.5in',
+          right: '0.5in',
+          bottom: '0.5in',
+          left: '0.5in',
+        },
+        preferCSSPageSize: false,
+      });
+
+      const pageCount = countPdfPages(pdfBuffer);
+      selected = { pdfBuffer, pageCount, scale };
+      if (allowOverflow || pageCount <= maxPages) break;
+      console.log(`⚠️  Pages: ${pageCount} at scale ${scale}; retrying smaller`);
+    }
+
+    if (!allowOverflow && selected.pageCount > maxPages) {
+      throw new Error(`Generated PDF is ${selected.pageCount} pages; limit is ${maxPages}. Trim CV content and retry.`);
+    }
 
     // Write PDF
     const { writeFile } = await import('fs/promises');
-    await writeFile(outputPath, pdfBuffer);
-
-    // Count pages (approximate from PDF structure)
-    const pdfString = pdfBuffer.toString('latin1');
-    const pageCount = (pdfString.match(/\/Type\s*\/Page[^s]/g) || []).length;
+    await writeFile(outputPath, selected.pdfBuffer);
 
     console.log(`✅ PDF generated: ${outputPath}`);
-    console.log(`📊 Pages: ${pageCount}`);
-    console.log(`📦 Size: ${(pdfBuffer.length / 1024).toFixed(1)} KB`);
+    console.log(`📊 Pages: ${selected.pageCount}`);
+    console.log(`🔎 Scale: ${selected.scale}`);
+    console.log(`📦 Size: ${(selected.pdfBuffer.length / 1024).toFixed(1)} KB`);
 
-    return { outputPath, pageCount, size: pdfBuffer.length };
+    return { outputPath, pageCount: selected.pageCount, size: selected.pdfBuffer.length };
   } finally {
     await browser.close();
   }
+}
+
+function countPdfPages(pdfBuffer) {
+  const pdfString = pdfBuffer.toString('latin1');
+  return (pdfString.match(/\/Type\s*\/Page\b/g) || []).length;
 }
 
 generatePDF().catch((err) => {

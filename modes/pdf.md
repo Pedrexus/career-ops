@@ -10,16 +10,17 @@
    - US/Canada → `letter`
    - Rest of the world → `a4`
 6. Detect role archetype → adapt framing
-7. Rewrite Professional Summary by injecting JD keywords + exit narrative bridge ("Built and sold a business. Now applying systems thinking to [JD domain].")
-8. Select top 3-4 most relevant projects for the job
+7. Rewrite Professional Summary by injecting JD keywords + the candidate's completed-PhD research-to-systems narrative from `config/profile.yml`
+8. Select top 2-3 most relevant projects for the job
 9. Reorder experience bullets by JD relevance
 10. Build competency grid from JD requirements (6-8 keyword phrases)
 11. Inject keywords naturally into existing achievements (NEVER invent)
 12. Generate full HTML from template + personalized content
 13. Read `name` from `config/profile.yml` → normalize to kebab-case lowercase (e.g. "John Doe" → "john-doe") → `{candidate}`
 14. Write HTML to `/tmp/cv-{candidate}-{company}.html`
-15. Execute: `node generate-pdf.mjs /tmp/cv-{candidate}-{company}.html output/cv-{candidate}-{company}-{YYYY-MM-DD}.pdf --format={letter|a4}`
+15. Execute: `node generate-pdf.mjs /tmp/cv-{candidate}-{company}.html output/cv-{candidate}-{company}-{YYYY-MM-DD}.pdf --format={letter|a4} --max-pages=1`
 16. Report: PDF path, number of pages, keyword coverage %
+17. If PDF generation fails because it exceeds one page, trim content and regenerate. Do not accept a two-page CV.
 
 ## ATS Rules (clean parsing)
 
@@ -39,18 +40,51 @@
 - **Section headers**: Space Grotesk 13px, uppercase, letter-spacing 0.05em, color cyan primary
 - **Body**: DM Sans 11px, line-height 1.5
 - **Company names**: accent purple color `hsl(270,70%,45%)`
-- **Margins**: 0.6in
+- **Margins**: 0.5in in generated PDFs
 - **Background**: pure white
 
 ## Section order (optimized "6-second recruiter scan")
 
-1. Header (large name, gradient, contact, portfolio link)
-2. Professional Summary (3-4 lines, keyword-dense)
-3. Core Competencies (6-8 keyword phrases in flex-grid)
-4. Work Experience (reverse chronological)
-5. Projects (top 3-4 most relevant)
-6. Education & Certifications
-7. Skills (languages + technical)
+1. Header (large name, role tagline, gradient, contact, portfolio link)
+2. Impact Highlights (3-4 headline metrics in a strip — value + label)
+3. Professional Summary (3-4 lines, keyword-dense)
+4. Core Competencies (6-8 keyword phrases in flex-grid)
+5. Work Experience (reverse chronological, role shown before company)
+6. Projects (top 2-3 most relevant)
+7. Education & Certifications
+8. Skills (languages + technical)
+
+## Tagline and Impact Highlights
+
+Two elements exist so a screener (human or ATS ranking model) sees the value without reading prose:
+
+- `{{TAGLINE}}` — one line under the name stating the role identity, mirroring the JD title. Example: `Research Scientist — LLM Interpretability & Large-Scale Pretraining | PhD in Computer Science`. Reuse the JD's exact role words when truthful.
+- `{{HIGHLIGHTS}}` — 3-4 hard metrics chosen for THIS job, each as:
+
+```html
+<div class="highlight">
+  <div class="highlight-value">45%+ MFU</div>
+  <div class="highlight-label">1T-token LLM pretraining, 256 GPUs</div>
+</div>
+```
+
+Pick values that are numbers or named outcomes (publication venue, scale, % improvement). Read them from `cv.md` / `article-digest.md` — NEVER invent. Under the hood the strip is plain text in source order, so ATS parsers read it as a normal sentence sequence.
+
+## Job entry markup (role first)
+
+```html
+<div class="job">
+  <div class="job-header">
+    <span class="job-role">Researcher, AI Lab <span class="job-company">— University X</span></span>
+    <span class="job-period">Apr 2023 – Mar 2026</span>
+  </div>
+  <ul>
+    <li>Achievement with <strong>metric emphasized in bold</strong>.</li>
+  </ul>
+</div>
+```
+
+Bold every number/metric inside bullets with `<strong>` — that is what the eye lands on.
 
 ## Keyword injection strategy (ethical, truth-based)
 
@@ -70,6 +104,8 @@ Use the template in `cv-template.html`. Replace the `{{...}}` placeholders with 
 | `{{LANG}}` | `en` or `es` |
 | `{{PAGE_WIDTH}}` | `8.5in` (letter) or `210mm` (A4) |
 | `{{NAME}}` | (from profile.yml) |
+| `{{TAGLINE}}` | One-line role identity mirroring the JD title (see above) |
+| `{{HIGHLIGHTS}}` | `<div class="highlight">…</div>` × 3-4 headline metrics (see above) |
 | `{{PHONE}}` | (from profile.yml — include with its separator only when `profile.yml` has a non-empty `phone` value; omit both `<span>` and `<span class="separator">` otherwise) |
 | `{{EMAIL}}` | (from profile.yml) |
 | `{{LINKEDIN_URL}}` | [from profile.yml] |
@@ -84,13 +120,38 @@ Use the template in `cv-template.html`. Replace the `{{...}}` placeholders with 
 | `{{SECTION_EXPERIENCE}}` | Work Experience |
 | `{{EXPERIENCE}}` | HTML for each job with reordered bullets |
 | `{{SECTION_PROJECTS}}` | Projects |
-| `{{PROJECTS}}` | HTML for top 3-4 projects |
+| `{{PROJECTS}}` | HTML for top 2-3 projects |
 | `{{SECTION_EDUCATION}}` | Education |
 | `{{EDUCATION}}` | Education HTML |
 | `{{SECTION_CERTIFICATIONS}}` | Certifications |
 | `{{CERTIFICATIONS}}` | Certifications HTML |
 | `{{SECTION_SKILLS}}` | Skills |
 | `{{SKILLS}}` | Skills HTML |
+
+## Japanese CV (職務経歴書) Generation
+
+For Japan-local roles where Japanese application documents are expected (Japanese JD, Japanese ATS like HRMOS/herp, or the user asks), use `templates/cv-template-ja.html` instead of the default template. Confirm with the user before defaulting to Japanese documents — many Japan-based AI labs accept the English resume.
+
+Conventions:
+- A4 always. A 職務経歴書 is conventionally 1-2 pages: generate with `--max-pages=2`, and prefer 1 page when content allows.
+- Dates in Japanese format: `2026年6月` (year-month). The header date is the generation date: `2026年6月11日`.
+- Body in polite written Japanese (である調 for bullets inside tables, です・ます調 for 職務要約 and 自己PR).
+- Translate role/achievement content from `cv.md` — NEVER invent. Keep proper nouns (model names, venues like TACL/EMNLP, AWS services) in Latin script.
+- The 職務経歴 section uses one `org-block` per employer: an `org-header` row (company/institution name + 事業内容/在籍期間) followed by a `table.career` with 期間 | 業務内容 columns.
+- A 履歴書 (rirekisho) is a separate fixed-form document (often with photo); this template does NOT replace it. If a posting requires a rirekisho, tell the user to fill the standard JIS form (or the employer's form) and offer the profile photo from `cv.md` guardrails.
+
+| Placeholder | Content |
+|-------------|---------|
+| `{{NAME_JA}}` | Name; for non-Japanese names use katakana + Latin script, e.g. `ペドロ・ヴァス・ヴァロイス（Pedro Vaz Valois）` |
+| `{{DATE_JA}}` | `YYYY年M月D日` |
+| `{{CONTACT_JA}}` | Email / phone / city line |
+| `{{SUMMARY_JA}}` | 職務要約 — 3-5 sentence career summary |
+| `{{SKILLS_JA}}` | `<li>…</li>` × 5-8 活かせる経験・知識・技術 |
+| `{{CAREER_JA}}` | `org-block` HTML per employer (see above) |
+| `{{PUBLICATIONS_JA}}` | `<li>…</li>` main publications, venue names in Latin script |
+| `{{EDUCATION_JA}}` | `<tr><td class="col-when">…</td><td>…</td></tr>` rows |
+| `{{CERTS_JA}}` | Same row format — 資格 and 語学 levels |
+| `{{SELF_PR_JA}}` | 自己PR paragraph tailored to the JD |
 
 ## Canva CV Generation (optional)
 

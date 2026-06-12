@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{NAME_JA}} — 職務経歴書</title>
+<style>
+  /* Japanese business document. Gothic system fonts render natively in
+     headless Chromium on macOS/Windows; Noto Sans JP covers Linux CI. */
+  :root {
+    --ink: #1a1a22;
+    --body: #2e2e36;
+    --muted: #6a6a74;
+    --accent: hsl(187, 74%, 28%);
+    --rule: #d8d8de;
+    --rule-strong: #9a9aa4;
+    --soft: hsl(187, 35%, 96%);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', 'Meiryo', sans-serif;
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--body);
+    background: #ffffff;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 2px 0;
+  }
+
+  /* === DOCUMENT TITLE === */
+  .doc-title {
+    text-align: center;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.45em;
+    text-indent: 0.45em;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .doc-title-rule {
+    height: 2px;
+    background: linear-gradient(to right, hsl(187, 74%, 32%), hsl(270, 70%, 45%));
+    border-radius: 1px;
+    width: 120px;
+    margin: 0 auto 10px;
+  }
+
+  .doc-meta {
+    text-align: right;
+    font-size: 9.5px;
+    color: var(--body);
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+
+  .doc-meta .name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* === SECTIONS === */
+  .section {
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink);
+    border-left: 4px solid var(--accent);
+    border-bottom: 1px solid var(--rule);
+    padding: 1px 0 3px 8px;
+    margin-bottom: 7px;
+    letter-spacing: 0.08em;
+  }
+
+  .section p {
+    font-size: 10px;
+    line-height: 1.65;
+    text-align: justify;
+  }
+
+  .section p strong,
+  td strong {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* === SKILL LIST (活かせる経験・知識・技術) === */
+  .skill-list {
+    list-style: none;
+  }
+
+  .skill-list li {
+    position: relative;
+    padding-left: 13px;
+    font-size: 10px;
+    line-height: 1.6;
+    margin-bottom: 2px;
+  }
+
+  .skill-list li::before {
+    content: '・';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* === CAREER TABLES (職務経歴) === */
+  .org-block {
+    margin-bottom: 10px;
+  }
+
+  .org-header {
+    background: var(--soft);
+    border: 1px solid var(--rule);
+    border-bottom: none;
+    padding: 4px 8px;
+    font-size: 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .org-name {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .org-meta {
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  table.career {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  table.career th,
+  table.career td {
+    border: 1px solid var(--rule);
+    padding: 4px 8px;
+    font-size: 9.8px;
+    line-height: 1.55;
+    vertical-align: top;
+    text-align: left;
+  }
+
+  table.career th {
+    background: #f4f4f6;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  table.career .col-period {
+    width: 21%;
+  }
+
+  table.career ul {
+    padding-left: 13px;
+    margin: 0;
+  }
+
+  table.career li {
+    margin-bottom: 2px;
+  }
+
+  /* === PUBLICATIONS (研究業績) === */
+  .pub-list {
+    list-style: none;
+    counter-reset: pub;
+  }
+
+  .pub-list li {
+    position: relative;
+    counter-increment: pub;
+    padding-left: 18px;
+    font-size: 9.5px;
+    line-height: 1.55;
+    margin-bottom: 3px;
+  }
+
+  .pub-list li::before {
+    content: counter(pub) '.';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* === EDUCATION / CERTS (学歴・資格) === */
+  table.simple {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  table.simple td {
+    border: 1px solid var(--rule);
+    padding: 3px 8px;
+    font-size: 9.8px;
+    line-height: 1.55;
+    vertical-align: top;
+  }
+
+  table.simple .col-when {
+    width: 21%;
+    white-space: nowrap;
+    color: var(--muted);
+  }
+
+  /* === SELF PR (自己PR) === */
+  .self-pr {
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    padding: 7px 10px;
+    font-size: 10px;
+    line-height: 1.65;
+    text-align: justify;
+  }
+
+  .closing {
+    text-align: right;
+    font-size: 10px;
+    color: var(--ink);
+    margin-top: 10px;
+  }
+
+  /* === PRINT === */
+  @media print {
+    body {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      padding: 0;
+    }
+  }
+
+  /* === PAGE BREAK CONTROL === */
+  .avoid-break,
+  .org-block,
+  .pub-list li,
+  table.simple tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 表題 -->
+  <div class="doc-title">職務経歴書</div>
+  <div class="doc-title-rule"></div>
+  <div class="doc-meta">
+    {{DATE_JA}}現在<br>
+    <span class="name">氏名　{{NAME_JA}}</span><br>
+    {{CONTACT_JA}}
+  </div>
+
+  <!-- 職務要約 -->
+  <div class="section avoid-break">
+    <div class="section-title">職務要約</div>
+    <p>{{SUMMARY_JA}}</p>
+  </div>
+
+  <!-- 活かせる経験・知識・技術 -->
+  <div class="section avoid-break">
+    <div class="section-title">活かせる経験・知識・技術</div>
+    <ul class="skill-list">
+      {{SKILLS_JA}}
+    </ul>
+  </div>
+
+  <!-- 職務経歴 -->
+  <div class="section">
+    <div class="section-title">職務経歴</div>
+    {{CAREER_JA}}
+  </div>
+
+  <!-- 研究業績 -->
+  <div class="section">
+    <div class="section-title">研究業績（主要）</div>
+    <ol class="pub-list">
+      {{PUBLICATIONS_JA}}
+    </ol>
+  </div>
+
+  <!-- 学歴 -->
+  <div class="section avoid-break">
+    <div class="section-title">学歴</div>
+    <table class="simple">
+      {{EDUCATION_JA}}
+    </table>
+  </div>
+
+  <!-- 資格・語学 -->
+  <div class="section avoid-break">
+    <div class="section-title">資格・語学</div>
+    <table class="simple">
+      {{CERTS_JA}}
+    </table>
+  </div>
+
+  <!-- 自己PR -->
+  <div class="section avoid-break">
+    <div class="section-title">自己PR</div>
+    <div class="self-pr">{{SELF_PR_JA}}</div>
+  </div>
+
+  <div class="closing">以上</div>
+
+</div>
+</body>
+</html>

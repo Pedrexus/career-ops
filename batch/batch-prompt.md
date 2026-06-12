@@ -228,7 +228,7 @@ Donde `{company-slug}` es el nombre de empresa en lowercase, sin espacios, con g
 **Score:** {X/5}
 **Legitimacy:** {High Confidence | Proceed with Caution | Suspicious}
 **URL:** {URL de la oferta original}
-**PDF:** career-ops/output/cv-candidate-{company-slug}-{{DATE}}.pdf
+**PDF:** career-ops/output/cv-candidate-{company-slug}-{role-slug}-{{DATE}}.pdf
 **Batch ID:** {{ID}}
 
 ---
@@ -288,20 +288,22 @@ next_action: "{one concrete next step}"
 4. Detecta ubicación empresa → formato papel: US/Canada → `letter`, resto → `a4`
 5. Detecta arquetipo → adapta framing
 6. Reescribe Professional Summary inyectando keywords
-7. Selecciona top 3-4 proyectos más relevantes
+7. Selecciona top 2-3 proyectos más relevantes
 8. Reordena bullets de experiencia por relevancia al JD
 9. Construye competency grid (6-8 keyword phrases)
 10. Inyecta keywords en logros existentes (**NUNCA inventa**)
 11. Genera HTML completo desde template (lee `templates/cv-template.html`)
-12. Escribe HTML a `/tmp/cv-candidate-{company-slug}.html`
+12. Escribe HTML a `/tmp/cv-candidate-{company-slug}-{role-slug}.html`
 13. Ejecuta:
 ```bash
 node generate-pdf.mjs \
-  /tmp/cv-candidate-{company-slug}.html \
-  output/cv-candidate-{company-slug}-{{DATE}}.pdf \
-  --format={letter|a4}
+  /tmp/cv-candidate-{company-slug}-{role-slug}.html \
+  output/cv-candidate-{company-slug}-{role-slug}-{{DATE}}.pdf \
+  --format={letter|a4} \
+  --max-pages=1
 ```
 14. Reporta: ruta PDF, nº páginas, % cobertura keywords
+15. Si `generate-pdf.mjs` falla porque el PDF supera 1 página, recorta bullets/proyectos y regenera. Nunca aceptes un CV de 2 páginas.
 
 **Reglas ATS:**
 - Single-column (sin sidebars)
@@ -318,7 +320,7 @@ node generate-pdf.mjs \
 - Section headers: Space Grotesk 13px uppercase, color cyan `hsl(187,74%,32%)`
 - Body: DM Sans 11px, line-height 1.5
 - Company names: purple `hsl(270,70%,45%)`
-- Márgenes: 0.6in
+- Márgenes: 0.5in en el PDF generado
 - Background: blanco
 
 **Estrategia keyword injection (ético):**
@@ -333,6 +335,8 @@ node generate-pdf.mjs \
 | `{{LANG}}` | `en` o `es` |
 | `{{PAGE_WIDTH}}` | `8.5in` (letter) o `210mm` (A4) |
 | `{{NAME}}` | (from profile.yml) |
+| `{{TAGLINE}}` | Una línea de identidad de rol que refleja el título del JD (ej. `Research Scientist — LLM Interpretability \| PhD in Computer Science`) |
+| `{{HIGHLIGHTS}}` | `<div class="highlight"><div class="highlight-value">métrica</div><div class="highlight-label">contexto</div></div>` × 3-4 métricas duras del cv.md relevantes al JD (NUNCA inventar) |
 | `{{EMAIL}}` | (from profile.yml) |
 | `{{LINKEDIN_URL}}` | (from profile.yml) |
 | `{{LINKEDIN_DISPLAY}}` | (from profile.yml) |
@@ -346,7 +350,7 @@ node generate-pdf.mjs \
 | `{{SECTION_EXPERIENCE}}` | Work Experience / Experiencia Laboral |
 | `{{EXPERIENCE}}` | HTML de cada trabajo con bullets reordenados |
 | `{{SECTION_PROJECTS}}` | Projects / Proyectos |
-| `{{PROJECTS}}` | HTML de top 3-4 proyectos |
+| `{{PROJECTS}}` | HTML de top 2-3 proyectos |
 | `{{SECTION_EDUCATION}}` | Education / Formación |
 | `{{EDUCATION}}` | HTML de educación |
 | `{{SECTION_CERTIFICATIONS}}` | Certifications / Certificaciones |
@@ -382,9 +386,12 @@ Formato TSV (una sola línea, sin header, 9 columnas tab-separated):
 
 **IMPORTANTE:** El orden TSV tiene status ANTES de score (col 5→status, col 6→score). En applications.md el orden es inverso (col 5→score, col 6→status). merge-tracker.mjs maneja la conversión.
 
-**Estados canónicos válidos:** `Evaluada`, `Aplicado`, `Respondido`, `Entrevista`, `Oferta`, `Rechazado`, `Descartado`, `NO APLICAR`
+**Estados canónicos válidos:** `Evaluated`, `Applied`, `Responded`, `Interview`, `Offer`, `Rejected`, `Discarded`, `SKIP`
 
-Donde `{next_num}` se calcula leyendo la última línea de `data/applications.md`.
+Usa `{{REPORT_NUM}}` como `{next_num}` (sin ceros a la izquierda si necesitas tratarlo como entero).
+El orquestador ya reservó ese número de forma única; no intentes recalcularlo desde
+`data/applications.md`, porque varios workers pueden estar corriendo en paralelo o en
+batch antes del merge final.
 
 ### Paso 6 — Output final
 

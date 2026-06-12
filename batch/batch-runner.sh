@@ -582,9 +582,14 @@ main() {
             running=$((running - 1))
           fi
         done
-        # Compact arrays
-        pids=("${pids[@]}")
-        pid_ids=("${pid_ids[@]}")
+        # Compact arrays without tripping set -u when all entries were unset.
+        if ((${#pids[@]})); then
+          pids=("${pids[@]}")
+          pid_ids=("${pid_ids[@]}")
+        else
+          pids=()
+          pid_ids=()
+        fi
         sleep 1
       done
 
