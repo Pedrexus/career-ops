@@ -2,7 +2,7 @@
   experience.html — section partial for Work Experience (#2183).
 
   Field placeholders filled per entry:
-    COMPANY          — employer name
+    COMPANY_LINK     — employer name, linked when company_url is present
     PERIOD           — date range
     ROLE             — job title
     BULLETS          — rendered <li> tags
@@ -13,7 +13,7 @@
 <!--ENTRY-->
 <div class="job">
   <div class="job-header">
-    <span class="job-company">{{COMPANY}}</span>
+    <span class="job-company">{{COMPANY_LINK}}</span>
     <span class="job-period">{{PERIOD}}</span>
   </div>
   <div class="job-role">{{ROLE}}</div>

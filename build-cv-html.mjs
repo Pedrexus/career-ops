@@ -336,6 +336,9 @@ function buildExperience(entries, partial) {
   if (!Array.isArray(entries) || entries.length === 0) return '';
   if (!partial) {
     return entries.filter(Boolean).map(e => {
+      const company = e.company_url
+        ? `<a href="${sanitizeUrl(e.company_url)}">${escapeHtml(e.company)}</a>`
+        : escapeHtml(e.company);
       const bullets = Array.isArray(e.bullets)
         ? e.bullets.filter(Boolean).map(b => `        <li>${escapeHtml(b)}</li>`).join('\n')
         : '';
@@ -344,7 +347,7 @@ function buildExperience(entries, partial) {
         : '';
       return `<div class="job">
     <div class="job-header">
-      <span class="job-company">${escapeHtml(e.company)}</span>
+      <span class="job-company">${company}</span>
       <span class="job-period">${escapeHtml(e.dates || e.period || '')}</span>
     </div>
     <div class="job-role">${escapeHtml(e.role)}</div>${location}
@@ -357,6 +360,9 @@ ${bullets}
 
   const { entryTemplate, blocks } = partial;
   return entries.filter(Boolean).map(e => {
+    const company = e.company_url
+      ? `<a href="${sanitizeUrl(e.company_url)}">${escapeHtml(e.company || '')}</a>`
+      : escapeHtml(e.company || '');
     const bullets = Array.isArray(e.bullets)
       ? e.bullets.filter(Boolean).map(b => `<li>${escapeHtml(b)}</li>`).join('\n    ')
       : '';
@@ -365,6 +371,7 @@ ${bullets}
     ]);
     return fillEntry(entryTemplate, blocks, {
       COMPANY: escapeHtml(e.company || ''),
+      COMPANY_LINK: company,
       PERIOD: escapeHtml(e.dates || e.period || ''),
       ROLE: escapeHtml(e.role || ''),
       LOCATION: escapeHtml(e.location || ''),
@@ -377,6 +384,9 @@ function buildProjects(entries, partial) {
   if (!Array.isArray(entries) || entries.length === 0) return '';
   if (!partial) {
     return entries.filter(Boolean).map(e => {
+      const name = e.url
+        ? `<a href="${sanitizeUrl(e.url)}">${escapeHtml(e.name)}</a>`
+        : escapeHtml(e.name);
       const badge = e.badge
         ? `<span class="project-badge">${escapeHtml(e.badge)}</span>`
         : '';
@@ -391,13 +401,16 @@ function buildProjects(entries, partial) {
         ? `\n    <div class="project-tech">${escapeHtml(e.tech)}</div>`
         : '';
       return `<div class="project">
-    <div class="project-title">${escapeHtml(e.name)}${badge}</div>${desc}${tech}
+    <div class="project-title">${name}${badge}</div>${desc}${tech}
   </div>`;
     }).join('\n  ');
   }
 
   const { entryTemplate, blocks } = partial;
   return entries.filter(Boolean).map(e => {
+    const name = e.url
+      ? `<a href="${sanitizeUrl(e.url)}">${escapeHtml(e.name || '')}</a>`
+      : escapeHtml(e.name || '');
     const descText = e.description
       || (Array.isArray(e.bullets) ? e.bullets.filter(Boolean).join(' ') : '');
     const blockValues = new Map([
@@ -407,6 +420,7 @@ function buildProjects(entries, partial) {
     ]);
     return fillEntry(entryTemplate, blocks, {
       NAME:  escapeHtml(e.name || ''),
+      NAME_LINK: name,
       BADGE: escapeHtml(e.badge || ''),
       DESC:  escapeHtml(descText),
       TECH:  escapeHtml(e.tech || ''),
